@@ -35,10 +35,10 @@ class DingTalkHandler():
 
         notify_url = f"https://oapi.dingtalk.com/robot/send?access_token={self.dingtalk_token}&timestamp={timestamp}&sign={sign}"
         try:
-            log.info("[DingTalk] url={}".format(str(notify_url)))
+            # log.info("[DingTalk] url={}".format(str(notify_url)))
             r = requests.post(notify_url, json=data)
             reply = r.json()
-            log.info("[DingTalk] reply={}".format(str(reply)))
+            # log.info("[DingTalk] reply={}".format(str(reply)))
         except Exception as e:
             log.error(e)
 
@@ -166,7 +166,7 @@ class DingTalkHandler():
         img_match_prefix = functions.check_prefix(
             prompt, channel_conf_val(const.DINGTALK, 'image_create_prefix'))
         nick = data['senderNick']
-        staffid = data['senderStaffId']
+        staffid = data['senderId']
         robotCode = data['robotCode']
         if img_match_prefix and isinstance(reply, list):
             images = ""
@@ -270,8 +270,8 @@ http_app = Flask(__name__,)
 
 @http_app.route("/", methods=['POST'])
 def chat():
-    log.info("[DingTalk] chat_headers={}".format(str(request.headers)))
-    log.info("[DingTalk] chat={}".format(str(request.data)))
+    # log.info("[DingTalk] chat_headers={}".format(str(request.headers)))
+    # log.info("[DingTalk] chat={}".format(str(request.data)))
     token = request.headers.get('token')
     data = json.loads(request.data)
     if data:

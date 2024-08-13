@@ -33,6 +33,10 @@ def create_channel(channel_type):
         from channel.qq.qq_channel import QQChannel
         return QQChannel()
 
+    elif channel_type == const.POST:
+        from channel.post.post import PostChannel
+        return PostChannel()
+
     elif channel_type == const.GMAIL:
         from channel.gmail.gmail_channel import GmailChannel
         return GmailChannel()

@@ -8,6 +8,7 @@ import openai
 import time
 
 user_session = dict()
+total_used_tokens = 0
 
 # aliyun对话模型API (Qwen)
 class QwenModel(Model):
@@ -26,6 +27,9 @@ class QwenModel(Model):
             if query in clear_memory_commands:
                 Session.clear_session(from_user_id)
                 return '记忆已清除'
+
+            if from_user_id == "":
+                Session.clear_session(from_user_id)
 
             new_query = Session.build_session_query(query, from_user_id)
             log.debug("[QWen] session query={}".format(new_query))
@@ -53,8 +57,10 @@ class QwenModel(Model):
             )
             reply_content = response.choices[0].message.content
             used_token = response.usage.total_tokens
-            log.debug(response)
+            global total_used_tokens
+            total_used_tokens = total_used_tokens + used_token
             log.info("[QWen] reply={}", reply_content)
+            log.info("[QWen] total used tokens={}".format(total_used_tokens))
             if reply_content:
                 # save conversation
                 Session.save_session(query, reply_content, user_id, used_token)

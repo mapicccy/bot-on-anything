@@ -4,6 +4,8 @@ from model.model import Model
 from config import model_conf, common_conf_val
 from common import const
 from common import log
+from dashscope import Generation
+
 import openai
 import time
 
@@ -16,6 +18,8 @@ class QwenModel(Model):
         self.api_key = model_conf(const.ALIYUN).get('api_key')
         self.api_base = model_conf(const.ALIYUN).get('api_base')
         self.proxy = model_conf(const.ALIYUN).get('proxy')
+        self.enable_search = model_conf(const.ALIYUN).get('enable_search')
+        self.temperature = model_conf(const.ALIYUN).get('temperature')
         self.client = openai.OpenAI(api_key=self.api_key, base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
 
     def reply(self, query, context=None):
@@ -47,15 +51,17 @@ class QwenModel(Model):
 
     def reply_text(self, query, user_id, retry_count=0):
         try:
-            response = self.client.chat.completions.create(
+            response = Generation.call(
                 model= model_conf(const.ALIYUN).get("model") or "qwen-turbo",  # 对话模型的名称
                 messages=query,
-                temperature=0.9,  # 值在[0,1]之间，越大表示回复越具有不确定性
+                temperature=self.temperature,  # 值在[0,2)之间，越大表示回复越具有不确定性
+                enable_search=self.enable_search,
                 top_p=1,
+                result_format="message",
                 frequency_penalty=0.0,  # [-2,2]之间，该值越大则更倾向于产生不同的内容
                 presence_penalty=0.0,  # [-2,2]之间，该值越大则更倾向于产生不同的内容
             )
-            reply_content = response.choices[0].message.content
+            reply_content = response.output.choices[0]["message"]["content"]
             used_token = response.usage.total_tokens
             global total_used_tokens
             total_used_tokens = total_used_tokens + used_token
@@ -69,7 +75,7 @@ class QwenModel(Model):
             # unknown exception
             log.exception(e)
             Session.clear_session(user_id)
-            return "出错了，请再问我一次吧"
+            return "出错了，请再问我一次吧。reason: {}".format(response.message)
 
 
     def reply_text_stream(self, query, new_query, user_id, retry_count=0):

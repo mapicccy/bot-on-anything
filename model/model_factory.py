@@ -24,7 +24,6 @@ def create_bot(model_type):
     elif model_type == const.ALIYUN:
         # ChatGPT API (gpt-3.5-turbo)
         from model.aliyun.qwen import QwenModel
-        print("qwen")
         return QwenModel()
 
     elif model_type == const.BAIDU:

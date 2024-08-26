@@ -4,10 +4,12 @@ from model.model import Model
 from config import model_conf, common_conf_val
 from common import const
 from common import log
-from dashscope import Generation
+from dashscope import Generation, ImageSynthesis
 
+import requests
 import openai
 import time
+import json
 
 user_session = dict()
 total_used_tokens = 0
@@ -125,12 +127,50 @@ class QwenModel(Model):
     def create_img(self, query, retry_count=0):
         try:
             log.info("[QWen] image_query={}".format(query))
-            response = openai.Image.create(
-                prompt=query,    #图片描述
-                n=1,             #每次生成图片的数量
-                size="256x256"   #图片大小,可选有 256x256, 512x512, 1024x1024
-            )
-            image_url = response['data'][0]['url']
+            """
+            response = ImageSynthesis.call(model=ImageSynthesis.Models.wanx_v1,
+                                           prompt=query,    #图片描述
+                                           n=1,             #每次生成图片的数量
+                                           size="1024*1024"   #图片大小,可选有 256x256, 512x512, 1024x1024
+                                          )
+            """
+            url = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis"
+            headers = {
+                'X-DashScope-Async': 'enable',
+                'Authorization': 'Bearer {}'.format(self.api_key),
+                'Content-Type': 'application/json'
+            }
+            data = {
+                "model": "wanx-v1",
+                "input": {
+                    "prompt": query,
+                    "negative_prompt": "低分辨率、错误、最差质量、低质量、jpeg 伪影、丑陋、重复、病态、残缺、超出框架、多余的手指、变异的手、画得不好的手、画得不好的脸、突变、变形、模糊、脱水、不良的解剖结构、 比例不良、多余肢体、克隆脸、毁容、总体比例、畸形肢体、缺臂、缺腿、多余手臂、多余腿、融合手指、手指过多、长脖子、用户名、水印、签名"
+                },
+                "parameters": {
+                    "style": "<auto>",
+                    "size": "1024*1024",
+                    "n": 1
+                }
+            }
+            r = requests.post(url, headers=headers, data=json.dumps(data))
+            response = r.json()
+            task = response["output"]['task_id']
+            status = response['output']['task_status']
+            image_url = ''
+            while status != "FAILED" or status != "UNKNOWN":
+                qurl = "https://dashscope.aliyuncs.com/api/v1/tasks/{}".format(task)
+                headers = {
+                    'Authorization': 'Bearer {}'.format(self.api_key),
+                }
+                r = requests.get(qurl, headers=headers)
+                response = r.json()
+                status = response['output']['task_status']
+                if status == "SUCCEEDED":
+                    image_url = response['output']['results'][0]['url']
+                    break
+
+                time.sleep(0.001)
+
             log.info("[QWen] image_url={}".format(image_url))
             return [image_url]
         except Exception as e:
